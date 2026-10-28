@@ -42,11 +42,27 @@ docker run -d \
 
 ## How it works
 
-1.  **ip-display.js**: A custom script located in the `_nuxt/` directory that detects the hostname.
-2.  **Smart Detection**: 
-    *   If you browse via **localhost**, it displays **192.168.1.32** so you know the correct LAN IP.
-    *   If you browse via a **real IP**, it displays that specific IP.
-3.  **Injection**: The `index.html` files have been modified to load this script automatically on startup.
+1.  **Saved interface**: The `index.html` files contain an inline IP patcher that runs on an interval.
+2.  **Smart Detection**:
+    *   If you browse via **localhost** or **127.0.0.1**, it displays **192.168.1.32** so you know the correct LAN IP.
+    *   Otherwise, it displays the hostname from the address bar.
+3.  **Standalone script**: The root-level `ip-display.js` can be loaded independently. It patches existing matching headings/brands on startup and observes DOM changes to restore removed badges without duplicating them. The saved HTML does not load this standalone script; its lifecycle changes do not change the inline patcher.
+
+## Standalone script tests
+
+With Node.js and Playwright (including its Chromium browser) available, run:
+
+```bash
+node --test --test-concurrency=1 tests/ip-display.test.mjs
+```
+
+For an installation outside this checkout or another compatible browser, set
+`PLAYWRIGHT_MODULE` to the module's absolute path, `BROWSER_TYPE` to `firefox`,
+`chromium` or `webkit`, and optionally `BROWSER_EXECUTABLE` to its executable.
+The runner always uses a headless browser and fresh private contexts. It executes
+the actual standalone script against synthetic DOM fixtures, intercepts fixture
+navigation without a server, and rejects unexpected page requests/errors.
+It does not load the saved application or contact an Audiobookshelf deployment.
 
 ---
 *Auto-generated backup by Gemini CLI.*

@@ -29,7 +29,19 @@
   }
 
   function patchTarget(target) {
-    if (!target || target.dataset.ipPatched) return;
+    if (!target) return;
+
+    // The framework can replace children without replacing the target or its
+    // dataset. Trust the current DOM, and only own this target's direct badges.
+    const badges = Array.from(target.children).filter(child =>
+        child.classList.contains('injected-ip-display'));
+    if (badges.length) {
+        if (badges[0].textContent !== displayIP) {
+            badges[0].textContent = displayIP;
+        }
+        badges.slice(1).forEach(badge => badge.remove());
+        return; // An unchanged badge causes no mutations on the next scan.
+    }
     
     // Ensure vertical stacking
     const displayStyle = window.getComputedStyle(target).display;
@@ -47,10 +59,9 @@
 
     const ipDiv = createIpElement();
     target.appendChild(ipDiv);
-    target.dataset.ipPatched = "true";
   }
 
-  const observer = new MutationObserver((mutations) => {
+  function patchTargets() {
     // A. Login Page (Look for H1 "Audiobookshelf")
     const h1s = document.querySelectorAll("h1");
     h1s.forEach(h1 => {
@@ -66,7 +77,18 @@
              patchTarget(el);
         }
     });
-  });
+  }
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  const observer = new MutationObserver(patchTargets);
+
+  function initialize() {
+    patchTargets();
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+
+  if (document.body) {
+    initialize();
+  } else {
+    document.addEventListener('DOMContentLoaded', initialize, { once: true });
+  }
 })();
