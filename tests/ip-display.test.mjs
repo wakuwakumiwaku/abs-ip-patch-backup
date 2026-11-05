@@ -103,6 +103,41 @@ test('patches existing heading immediately without a later application mutation'
   })), { display: 'flex', alignItems: 'center' });
 });
 
+for (const [tag, className] of [['h1', ''], ['div', 'brand']]) {
+  test(`stacks a row-flex ${tag} brand above its address`, async t => {
+    const f = await fixture(t, `
+      <style>#target { display: flex; flex-direction: row; }</style>
+      <${tag} id="target" class="${className}"><span id="wordmark">Audiobookshelf</span></${tag}>`);
+    await settled(f);
+    assert.deepEqual(await badges(f.page), ['badge-fixture.invalid']);
+    assert.deepEqual(await f.page.locator('#target').evaluate(el => ({
+      display: getComputedStyle(el).display,
+      direction: getComputedStyle(el).flexDirection,
+      displayOverride: el.style.display
+    })), { display: 'flex', direction: 'column', displayOverride: '' });
+    assert.equal(await f.page.locator('#wordmark').textContent(), 'Audiobookshelf');
+    assert.equal(await f.page.locator('#wordmark + .injected-ip-display').count(), 1);
+    await f.page.evaluate(() => { window.originalBadge = document.querySelector('#target > .injected-ip-display'); });
+    await f.page.evaluate(() => document.body.appendChild(document.createComment('unrelated render')));
+    await settled(f);
+    assert.equal(await f.page.evaluate(() => document.querySelector('#target > .injected-ip-display') === window.originalBadge), true);
+  });
+}
+
+test('preserves an existing stylesheet column without an unnecessary inline override', async t => {
+  const f = await fixture(t, `
+    <style>#target { display: flex; flex-direction: column; }</style>
+    <div id="target" class="brand">Audiobookshelf</div>`);
+  await settled(f);
+  assert.deepEqual(await badges(f.page), ['badge-fixture.invalid']);
+  assert.deepEqual(await f.page.locator('#target').evaluate(el => ({
+    display: getComputedStyle(el).display,
+    direction: getComputedStyle(el).flexDirection,
+    displayOverride: el.style.display,
+    directionOverride: el.style.flexDirection
+  })), { display: 'flex', direction: 'column', displayOverride: '', directionOverride: '' });
+});
+
 test('can execute in the head before document.body exists', async t => {
   const f = await fixture(t, '<h1 id="target">Audiobookshelf</h1>', { beforeBody: true });
   await settled(f);

@@ -44,9 +44,11 @@
     }
     
     // Ensure vertical stacking
-    const displayStyle = window.getComputedStyle(target).display;
-    if (displayStyle !== 'flex') {
+    const targetStyle = window.getComputedStyle(target);
+    if (targetStyle.display !== 'flex') {
         target.style.display = 'flex';
+    }
+    if (targetStyle.flexDirection !== 'column') {
         target.style.flexDirection = 'column';
     }
     
