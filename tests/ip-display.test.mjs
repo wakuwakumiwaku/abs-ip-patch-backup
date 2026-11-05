@@ -245,6 +245,30 @@ test('observes a Vue-style characterData update that makes a target match', asyn
   assert.deepEqual(await badges(f.page), ['badge-fixture.invalid']);
 });
 
+for (const [tag, className] of [
+  ['div', 'logo-text'], ['div', 'brand'], ['a', 'navbar-brand'], ['div', 'server-name']
+]) {
+  test(`observes a class-only update making an existing ${className} target eligible`, async t => {
+    const f = await fixture(t, `<${tag} id="target">Audiobookshelf</${tag}>`);
+    await settled(f);
+    assert.deepEqual(await badges(f.page), []);
+    // No text/child mutation: frameworks can attach their brand class later.
+    await f.page.locator('#target').evaluate((el, name) => el.classList.add(name), className);
+    await settled(f);
+    assert.deepEqual(await badges(f.page), ['badge-fixture.invalid'], 'class-only eligibility must trigger a scan');
+    await f.page.evaluate(() => { window.originalBadge = document.querySelector('#target > .injected-ip-display'); });
+    for (const name of ['extra-one', 'extra-two']) {
+      await f.page.locator('#target').evaluate((el, name) => el.classList.add(name), name);
+      await settled(f);
+      assert.equal(await f.page.evaluate(() => document.querySelector('#target > .injected-ip-display') === window.originalBadge), true);
+    }
+    const before = await f.page.evaluate(() => window.badgeHarness.callbacks);
+    await f.page.locator('#target').evaluate(el => { el.dataset.unrelated = 'change'; el.title = 'unrelated'; });
+    const after = await settled(f);
+    assert.equal(after.callbacks, before, 'unrelated attributes must not trigger scans');
+  });
+}
+
 for (const [host, expected] of [
   ['localhost', '192.168.1.32'],
   ['127.0.0.1', '192.168.1.32'],

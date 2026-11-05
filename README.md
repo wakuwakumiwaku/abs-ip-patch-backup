@@ -48,6 +48,8 @@ docker run -d \
     *   Otherwise, it displays the hostname from the address bar.
 3.  **Standalone script**: The root-level `ip-display.js` can be loaded independently. It patches existing matching headings/brands on startup and observes DOM changes to restore removed badges without duplicating them. The saved HTML does not load this standalone script; its lifecycle changes do not change the inline patcher.
 
+The standalone observer also handles class-only updates that turn an existing element into a matching brand target. It watches only the relevant `class` attribute, not unrelated attributes or its own inline style changes; unchanged badges are reused without additional DOM writes.
+
 ## Standalone script tests
 
 With Node.js and Playwright (including its Chromium browser) available, run:

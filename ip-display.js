@@ -83,7 +83,11 @@
 
   function initialize() {
     patchTargets();
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, {
+      childList: true, subtree: true, characterData: true,
+      // Frameworks can attach a brand selector without changing any children.
+      attributes: true, attributeFilter: ['class']
+    });
   }
 
   if (document.body) {
