@@ -317,3 +317,54 @@ for (const [host, expected] of [
     assert.deepEqual(await badges(f.page), [expected]);
   });
 }
+
+
+for (const [tag, className] of [['h1', ''], ['div', 'brand']]) {
+  test(`repairs class-driven layout changes while retaining the ${tag} address node`, async t => {
+    const f = await fixture(t, `<style>
+      #target { display: flex; flex-direction: column; }
+      #target.reflowed { flex-direction: row; }
+    </style><${tag} id="target" class="${className}"><span id="wordmark">Audiobookshelf</span></${tag}>`);
+    await settled(f);
+    await f.page.evaluate(() => {
+      window.retainedAddress = document.querySelector('#target > .injected-ip-display');
+      document.querySelector('#target').classList.add('reflowed');
+    });
+    await settled(f);
+    const layout = await f.page.locator('#target').evaluate(el => ({
+      direction: getComputedStyle(el).flexDirection,
+      retained: el.querySelector(':scope > .injected-ip-display') === window.retainedAddress,
+      count: el.querySelectorAll(':scope > .injected-ip-display').length,
+      belowWordmark: el.querySelector('.injected-ip-display').getBoundingClientRect().top >=
+        el.querySelector('#wordmark').getBoundingClientRect().bottom
+    }));
+    assert.deepEqual(layout, { direction: 'column', retained: true, count: 1, belowWordmark: true });
+    // Later stable scans must neither replace the address nor rewrite inline style.
+    await f.page.evaluate(() => {
+      window.stableStyleWrites = 0;
+      window.styleObserver = new MutationObserver(records => { window.stableStyleWrites += records.length; });
+      window.styleObserver.observe(document.querySelector('#target'), { attributes: true, attributeFilter: ['style'] });
+      document.body.appendChild(document.createComment('unrelated retained-layout render'));
+    });
+    await settled(f);
+    assert.equal(await f.page.evaluate(() => window.stableStyleWrites), 0);
+    await f.page.evaluate(() => window.styleObserver.disconnect());
+    assert.deepEqual(await badges(f.page), ['badge-fixture.invalid']);
+  });
+}
+
+test('reconciles a pre-existing retained badge without replacing it or the wordmark', async t => {
+  const f = await fixture(t, `<h1 id="target" style="display: flex; flex-direction: row; align-items: flex-end">
+    <span id="wordmark">Audiobookshelf</span>
+    <div id="retained-address" class="injected-ip-display">badge-fixture.invalid</div>
+  </h1>`);
+  await settled(f);
+  assert.deepEqual(await f.page.locator('#target').evaluate(el => ({
+    display: getComputedStyle(el).display,
+    direction: getComputedStyle(el).flexDirection,
+    alignment: getComputedStyle(el).alignItems
+  })), { display: 'flex', direction: 'column', alignment: 'center' });
+  assert.equal(await f.page.locator('#target > #retained-address.injected-ip-display').count(), 1);
+  assert.equal(await f.page.locator('#wordmark').textContent(), 'Audiobookshelf');
+  assert.deepEqual(await badges(f.page), ['badge-fixture.invalid']);
+});

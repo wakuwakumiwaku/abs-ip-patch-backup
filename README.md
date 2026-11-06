@@ -50,6 +50,8 @@ docker run -d \
 
 The standalone observer also handles class-only updates that turn an existing element into a matching brand target. It watches only the relevant `class` attribute, not unrelated attributes or its own inline style changes; unchanged badges are reused without additional DOM writes.
 
+Layout is reconciled even when an address node is retained: a later class-driven row layout is restored to vertical stacking without replacing the badge or wordmark. Matching pre-existing badges receive the same layout checks, while already-correct styles are left untouched.
+
 ## Standalone script tests
 
 With Node.js and Playwright (including its Chromium browser) available, run:

@@ -31,6 +31,19 @@
   function patchTarget(target) {
     if (!target) return;
 
+    // Reconcile layout even when a framework retained the existing address.
+    const targetStyle = window.getComputedStyle(target);
+    if (targetStyle.display !== 'flex') {
+        target.style.display = 'flex';
+    }
+    if (targetStyle.flexDirection !== 'column') {
+        target.style.flexDirection = 'column';
+    }
+    const alignment = target.tagName === 'H1' ? 'center' : 'flex-start';
+    if (target.style.alignItems !== alignment) {
+        target.style.alignItems = alignment;
+    }
+
     // The framework can replace children without replacing the target or its
     // dataset. Trust the current DOM, and only own this target's direct badges.
     const badges = Array.from(target.children).filter(child =>
@@ -40,23 +53,7 @@
             badges[0].textContent = displayIP;
         }
         badges.slice(1).forEach(badge => badge.remove());
-        return; // An unchanged badge causes no mutations on the next scan.
-    }
-    
-    // Ensure vertical stacking
-    const targetStyle = window.getComputedStyle(target);
-    if (targetStyle.display !== 'flex') {
-        target.style.display = 'flex';
-    }
-    if (targetStyle.flexDirection !== 'column') {
-        target.style.flexDirection = 'column';
-    }
-    
-    // Center logic for Login page (H1), Left align for Navbar
-    if (target.tagName === 'H1') {
-        target.style.alignItems = 'center';
-    } else {
-        target.style.alignItems = 'flex-start';
+        return; // Stable scans preserve both the badge and its inline styles.
     }
 
     const ipDiv = createIpElement();
